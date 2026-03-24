@@ -38,14 +38,11 @@ opencli gemini-web new
 ### 向 Gemini 提问
 
 ```bash
+# 简单问题（默认等待 180 秒）
 opencli gemini-web ask "法国的首都是哪里？"
-opencli gemini-web ask "解释量子计算" --wait 20
-```
 
-### 读取最后回复
-
-```bash
-opencli gemini-web read
+# 复杂问题，增加超时时间
+opencli gemini-web ask "分析量子计算的原理和应用" --timeout 300
 ```
 
 ### 查看对话历史
@@ -60,8 +57,7 @@ opencli gemini-web history --limit 10
 |------|------|
 | `status` | 检查 Gemini 登录状态 |
 | `new` | 开始新对话 |
-| `ask` | 向 Gemini 发送消息并获取回复 |
-| `read` | 读取最后一条回复 |
+| `ask` | 发送消息并等待回复 |
 | `history` | 列出最近的对话 |
 
 ## 输出格式
@@ -78,9 +74,8 @@ opencli gemini-web history -f table   # 表格格式（默认）
 
 ```
 opencli-plugin-gemini-web/
-├── ask.yaml          # 发送消息
+├── ask.yaml          # 发送消息并等待回复
 ├── new.yaml          # 新建对话
-├── read.yaml         # 读取回复
 ├── history.yaml      # 历史记录
 ├── status.yaml       # 状态检查
 ├── package.json
@@ -90,27 +85,21 @@ opencli-plugin-gemini-web/
 
 ## 配置
 
-对于耗时较长的响应（复杂问题、研究任务），需要增加浏览器超时时间：
+对于耗时较长的响应（复杂问题、研究任务），增加超时时间：
 
 ```bash
-# 方式 1：为当前会话设置环境变量
-export OPENCLI_BROWSER_COMMAND_TIMEOUT=300
-
-# 方式 2：添加到 ~/.zshrc 或 ~/.bashrc 永久生效
-echo 'export OPENCLI_BROWSER_COMMAND_TIMEOUT=300' >> ~/.zshrc
-source ~/.zshrc
-
-# 方式 3：命令行内联使用
-OPENCLI_BROWSER_COMMAND_TIMEOUT=300 opencli gemini-web ask "复杂问题..." --wait 180
+# 默认超时 180 秒，复杂问题可增加
+opencli gemini-web ask "分析四只股票的投资价值..." --timeout 300
 ```
 
 ## 故障排除
 
 ### 超时错误
 
-如果看到 `timed out after 60s`，请增加超时时间：
+如果响应时间过长：
 ```bash
-export OPENCLI_BROWSER_COMMAND_TIMEOUT=300
+# 增加超时时间（秒）
+opencli gemini-web ask "复杂问题..." --timeout 300
 ```
 
 ### "未登录" 错误

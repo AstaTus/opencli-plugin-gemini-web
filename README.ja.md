@@ -38,14 +38,11 @@ opencli gemini-web new
 ### Gemini に質問する
 
 ```bash
+# 簡単な質問（デフォルト 180 秒待機）
 opencli gemini-web ask "フランスの首都はどこですか？"
-opencli gemini-web ask "量子コンピューティングについて説明して" --wait 20
-```
 
-### 最新の回答を読み取る
-
-```bash
-opencli gemini-web read
+# 複雑な質問、タイムアウト延長
+opencli gemini-web ask "量子コンピューティングについて詳しく説明して" --timeout 300
 ```
 
 ### 会話履歴を表示
@@ -60,8 +57,7 @@ opencli gemini-web history --limit 10
 |----------|------|
 | `status` | Gemini のログイン状態を確認 |
 | `new` | 新しい会話を開始 |
-| `ask` | Gemini にメッセージを送信して回答を取得 |
-| `read` | 最新の回答を読み取る |
+| `ask` | メッセージを送信して回答を待機 |
 | `history` | 最近の会話を一覧表示 |
 
 ## 出力形式
@@ -78,9 +74,8 @@ opencli gemini-web history -f table   # テーブル形式（デフォルト）
 
 ```
 opencli-plugin-gemini-web/
-├── ask.yaml          # メッセージ送信
+├── ask.yaml          # メッセージ送信と回答待機
 ├── new.yaml          # 新規会話
-├── read.yaml         # 回答読み取り
 ├── history.yaml      # 履歴一覧
 ├── status.yaml       # ステータス確認
 ├── package.json
@@ -90,27 +85,21 @@ opencli-plugin-gemini-web/
 
 ## 設定
 
-長時間の応答（複雑な質問、調査タスク）の場合、ブラウザのタイムアウトを増やします：
+長時間の応答の場合、タイムアウトを増やします：
 
 ```bash
-# 方法 1：現在のセッション用に環境変数を設定
-export OPENCLI_BROWSER_COMMAND_TIMEOUT=300
-
-# 方法 2：永続化するために ~/.zshrc または ~/.bashrc に追加
-echo 'export OPENCLI_BROWSER_COMMAND_TIMEOUT=300' >> ~/.zshrc
-source ~/.zshrc
-
-# 方法 3：コマンドと一緒に指定
-OPENCLI_BROWSER_COMMAND_TIMEOUT=300 opencli gemini-web ask "複雑な質問..." --wait 180
+# デフォルトは 180 秒、複雑な質問は増やす
+opencli gemini-web ask "複雑な質問..." --timeout 300
 ```
 
 ## トラブルシューティング
 
 ### タイムアウトエラー
 
-`timed out after 60s` と表示された場合、タイムアウトを増やしてください：
+応答に時間がかかる場合：
 ```bash
-export OPENCLI_BROWSER_COMMAND_TIMEOUT=300
+# タイムアウトを増やす（秒）
+opencli gemini-web ask "複雑な質問..." --timeout 300
 ```
 
 ### 「ログインしていません」エラー
