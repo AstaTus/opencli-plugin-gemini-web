@@ -88,7 +88,30 @@ opencli-plugin-gemini-web/
 └── README.md
 ```
 
+## 設定
+
+長時間の応答（複雑な質問、調査タスク）の場合、ブラウザのタイムアウトを増やします：
+
+```bash
+# 方法 1：現在のセッション用に環境変数を設定
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=300
+
+# 方法 2：永続化するために ~/.zshrc または ~/.bashrc に追加
+echo 'export OPENCLI_BROWSER_COMMAND_TIMEOUT=300' >> ~/.zshrc
+source ~/.zshrc
+
+# 方法 3：コマンドと一緒に指定
+OPENCLI_BROWSER_COMMAND_TIMEOUT=300 opencli gemini-web ask "複雑な質問..." --wait 180
+```
+
 ## トラブルシューティング
+
+### タイムアウトエラー
+
+`timed out after 60s` と表示された場合、タイムアウトを増やしてください：
+```bash
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=300
+```
 
 ### 「ログインしていません」エラー
 

@@ -88,7 +88,30 @@ opencli-plugin-gemini-web/
 └── README.md
 ```
 
+## 配置
+
+对于耗时较长的响应（复杂问题、研究任务），需要增加浏览器超时时间：
+
+```bash
+# 方式 1：为当前会话设置环境变量
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=300
+
+# 方式 2：添加到 ~/.zshrc 或 ~/.bashrc 永久生效
+echo 'export OPENCLI_BROWSER_COMMAND_TIMEOUT=300' >> ~/.zshrc
+source ~/.zshrc
+
+# 方式 3：命令行内联使用
+OPENCLI_BROWSER_COMMAND_TIMEOUT=300 opencli gemini-web ask "复杂问题..." --wait 180
+```
+
 ## 故障排除
+
+### 超时错误
+
+如果看到 `timed out after 60s`，请增加超时时间：
+```bash
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=300
+```
 
 ### "未登录" 错误
 
