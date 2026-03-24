@@ -13,8 +13,12 @@
 ## インストール
 
 ```bash
-# GitHub からインストール
-opencli plugin install github:your-username/opencli-plugin-gemini-web
+# opencli プラグインマネージャー経由
+opencli plugin install github:AstaTus/opencli-plugin-gemini-web
+
+# または手動インストール
+git clone https://github.com/AstaTus/opencli-plugin-gemini-web \
+  ~/.opencli/plugins/gemini-web
 ```
 
 ## 使い方
