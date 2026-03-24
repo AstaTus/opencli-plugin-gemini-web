@@ -74,7 +74,7 @@ opencli gemini-web history -f table   # 表格格式（默认）
 
 ```
 opencli-plugin-gemini-web/
-├── ask.yaml          # 发送消息并等待回复
+├── ask.ts            # 发送消息并等待回复 (TypeScript)
 ├── new.yaml          # 新建对话
 ├── history.yaml      # 历史记录
 ├── status.yaml       # 状态检查
@@ -85,21 +85,74 @@ opencli-plugin-gemini-web/
 
 ## 配置
 
-对于耗时较长的响应（复杂问题、研究任务），增加超时时间：
+**重要**：在 `~/.zshrc` 或 `~/.bashrc` 中添加以下配置以避免超时错误：
 
 ```bash
-# 默认超时 180 秒，复杂问题可增加
-opencli gemini-web ask "分析四只股票的投资价值..." --timeout 300
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=350
 ```
+
+然后重新加载：
+```bash
+source ~/.zshrc
+```
+
+## 使用方法
+
+### 检查状态
+
+```bash
+opencli gemini-web status
+```
+
+### 开始新对话
+
+```bash
+opencli gemini-web new
+```
+
+### 向 Gemini 提问
+
+```bash
+# 简单问题（默认 300 秒超时）
+opencli gemini-web ask "法国的首都是哪里？"
+
+# 使用思考模式处理复杂问题
+opencli gemini-web ask "分析量子计算的原理" --mode think
+
+# 使用 Pro 模式处理高级任务
+opencli gemini-web ask "编写一个复杂算法" --mode pro
+
+# 自定义超时时间
+opencli gemini-web ask "复杂问题" --timeout 600
+```
+
+**模式说明：**
+- `quick`（默认）：快速响应
+- `think`：深度思考，适合复杂问题
+- `pro`：高级功能
+
+### 查看对话历史
+
+```bash
+opencli gemini-web history --limit 10
+```
+
+## 命令列表
+
+| 命令 | 描述 |
+|------|------|
+| `status` | 检查 Gemini 登录状态 |
+| `new` | 开始新对话 |
+| `ask` | 发送消息并等待回复 |
+| `history` | 列出最近的对话 |
 
 ## 故障排除
 
 ### 超时错误
 
-如果响应时间过长：
+如果看到 `timed out after 60s`，请确保设置了环境变量：
 ```bash
-# 增加超时时间（秒）
-opencli gemini-web ask "复杂问题..." --timeout 300
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=350
 ```
 
 ### "未登录" 错误

@@ -78,7 +78,7 @@ opencli gemini-web history -f table   # Table output (default)
 
 ```
 opencli-plugin-gemini-web/
-├── ask.yaml          # Send message and wait for response
+├── ask.ts            # Send message and wait for response (TypeScript)
 ├── new.yaml          # New conversation command
 ├── history.yaml      # List conversations command
 ├── status.yaml       # Status check command
@@ -89,21 +89,74 @@ opencli-plugin-gemini-web/
 
 ## Configuration
 
-For long responses (complex questions, research tasks), increase the timeout:
+**Important**: Add this to your `~/.zshrc` or `~/.bashrc` to avoid timeout errors:
 
 ```bash
-# Default timeout is 180 seconds, increase for complex queries
-opencli gemini-web ask "分析四只股票的投资价值..." --timeout 300
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=350
 ```
+
+Then reload:
+```bash
+source ~/.zshrc
+```
+
+## Usage
+
+### Check Status
+
+```bash
+opencli gemini-web status
+```
+
+### Start a New Conversation
+
+```bash
+opencli gemini-web new
+```
+
+### Ask Gemini a Question
+
+```bash
+# Simple question (default 300s timeout)
+opencli gemini-web ask "What is the capital of France?"
+
+# Use thinking mode for complex questions
+opencli gemini-web ask "分析量子计算的原理" --mode think
+
+# Use Pro mode for advanced tasks
+opencli gemini-web ask "Write a complex algorithm" --mode pro
+
+# Custom timeout
+opencli gemini-web ask "复杂问题" --timeout 600
+```
+
+**Modes:**
+- `quick` (default): Fast response
+- `think`: Deep thinking for complex problems
+- `pro`: Advanced capabilities
+
+### List Conversation History
+
+```bash
+opencli gemini-web history --limit 10
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `status` | Check Gemini login status |
+| `new` | Start a new conversation |
+| `ask` | Send a message and wait for response |
+| `history` | List recent conversations |
 
 ## Troubleshooting
 
 ### Timeout errors
 
-If response takes too long:
+If you see `timed out after 60s`, make sure you set the environment variable:
 ```bash
-# Increase timeout (seconds)
-opencli gemini-web ask "复杂问题..." --timeout 300
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=350
 ```
 
 ### "Not logged in" error
