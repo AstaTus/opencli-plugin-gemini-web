@@ -12,41 +12,36 @@ const MODE_LABELS: Record<string, string> = {
   'deep-research': 'Deep Research'
 };
 
-async function selectMode(page: any, mode: string): Promise<void> {
-  if (mode === 'quick') return;
-
-  if (mode === 'deep-research') {
-    // Deep Research is in the tools menu
-    await page.evaluate(`
-      (async () => {
-        // Find and click "工具" button
-        const buttons = document.querySelectorAll('button');
-        for (const btn of buttons) {
-          const text = btn.innerText?.trim();
-          if (text === '工具') {
-            btn.click();
-            await new Promise(r => setTimeout(r, 1000));
-            break;
-          }
+async function selectDeepResearch(page: any): Promise<void> {
+  await page.evaluate(`
+    (async () => {
+      // Click 工具 button
+      const buttons = document.querySelectorAll('button');
+      for (const btn of buttons) {
+        const text = btn.innerText?.trim();
+        if (text === '工具') {
+          btn.click();
+          await new Promise(r => setTimeout(r, 1000));
+          break;
         }
+      }
 
-        // Find and click "Deep Research"
-        const items = document.querySelectorAll('button, [role="menuitem"]');
-        for (const item of items) {
-          const text = (item.innerText || '').trim();
-          if (text.includes('Deep Research')) {
-            item.click();
-            break;
-          }
+      // Click Deep Research
+      const items = document.querySelectorAll('button, [role="menuitem"]');
+      for (const item of items) {
+        const text = (item.innerText || '').trim();
+        if (text.includes('Deep Research')) {
+          item.click();
+          break;
         }
-      })()
-    `);
+      }
+    })()
+  `);
 
-    await page.wait(1);
-    return;
-  }
+  await page.wait(1);
+}
 
-  // Other modes from mode selector
+async function selectThinkMode(page: any, mode: string): Promise<void> {
   const targetMode = MODE_LABELS[mode];
   if (!targetMode) return;
 
@@ -72,34 +67,40 @@ async function selectMode(page: any, mode: string): Promise<void> {
   await page.wait(0.8);
 }
 
-async function confirmResearchDirection(page: any): Promise<void> {
-  // Deep Research may show a confirmation dialog
-  await page.wait(3);
+async function confirmResearchStart(page: any, maxWaitSec: number): Promise<boolean> {
+  const maxMs = maxWaitSec * 1000;
+  const startTime = Date.now();
 
-  await page.evaluate(`
-    (async () => {
-      // Look for confirmation button
-      const buttons = document.querySelectorAll('button');
-      for (const btn of buttons) {
-        const text = btn.innerText?.trim();
-        const label = btn.getAttribute('aria-label');
-        if (text === '开始研究' || text === 'Start Research' ||
-            text === '确认' || text === 'Confirm' ||
-            label?.includes('开始') || label?.includes('Start')) {
-          btn.click();
-          return;
+  while (Date.now() - startTime < maxMs) {
+    await page.wait(1);
+
+    const clicked = await page.evaluate(`
+      (() => {
+        // Look for "Start research" button
+        const btns = document.querySelectorAll('button');
+        for (const btn of btns) {
+          const text = btn.innerText?.trim();
+          const aria = btn.getAttribute('aria-label') || '';
+
+          if (text === 'Start research' || aria === 'Start research' ||
+              text === '开始研究' || aria.includes('Start research')) {
+            btn.click();
+            return true;
+          }
         }
-      }
+        return false;
+      })()
+    `);
 
-      // Try pressing Enter as fallback
-      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    })()
-  `);
+    if (clicked) {
+      return true;
+    }
+  }
 
-  await page.wait(1);
+  return false;
 }
 
-async function sendPrompt(page: any, prompt: string, mode: string): Promise<boolean> {
+async function sendPrompt(page: any, prompt: string): Promise<boolean> {
   return page.evaluate(`
     (async () => {
       const editor = document.querySelector('rich-textarea div.ql-editor');
@@ -137,13 +138,11 @@ async function sendPrompt(page: any, prompt: string, mode: string): Promise<bool
   `) as Promise<boolean>;
 }
 
-async function waitForResponse(page: any, timeoutMs: number, mode: string): Promise<string> {
+async function waitForResponse(page: any, timeoutMs: number, isDeepResearch: boolean): Promise<string> {
   const startTime = Date.now();
   let lastText = '';
   let stableCount = 0;
-
-  // Deep Research needs more stability checks
-  const requiredStable = mode === 'deep-research' ? 5 : 3;
+  const requiredStable = isDeepResearch ? 5 : 3;
 
   while (Date.now() - startTime < timeoutMs) {
     await page.wait(2);
@@ -154,14 +153,18 @@ async function waitForResponse(page: any, timeoutMs: number, mode: string): Prom
         const stopBtn = document.querySelector('button[aria-label="停止生成"]');
         const isGenerating = !!stopBtn;
 
+        // Check for deep research progress indicator
+        const progressEl = document.querySelector('[class*="progress"], [class*="loading"]');
+        const hasProgress = !!progressEl;
+
         // Get chat content
         const chatWindow = document.querySelector('chat-window');
-        if (!chatWindow) return { text: '', generating: isGenerating };
+        if (!chatWindow) return { text: '', generating: isGenerating || hasProgress };
 
         const fullText = chatWindow.innerText || '';
         const idx = fullText.indexOf('Gemini 说');
 
-        if (idx < 0) return { text: '', generating: isGenerating };
+        if (idx < 0) return { text: '', generating: isGenerating || hasProgress };
 
         let response = fullText.substring(idx + 8);
 
@@ -171,9 +174,11 @@ async function waitForResponse(page: any, timeoutMs: number, mode: string): Prom
           .replace(/\\nGemini 是一款[\\s\\S]*$/, '')
           .replace(/\\n快速[\\s\\S]*$/, '')
           .replace(/\\n升级到[\\s\\S]*$/, '')
+          .replace(/\\n来源\\n[\\s\\S]*$/, '')
+          .replace(/\\n文件\\n[\\s\\S]*$/, '')
           .trim();
 
-        return { text: response, generating: isGenerating };
+        return { text: response, generating: isGenerating || hasProgress };
       })()
     `);
 
@@ -215,7 +220,7 @@ cli({
       name: 'mode',
       type: 'string',
       default: 'quick',
-      help: 'Response mode: quick (快速), think (思考), pro (Pro), deep-research (Deep Research)'
+      help: 'Response mode: quick, think, pro, deep-research'
     },
     {
       name: 'timeout',
@@ -228,8 +233,8 @@ cli({
   func: async (page, kwargs) => {
     const prompt = kwargs.prompt as string;
     const mode = (kwargs.mode as string) || 'quick';
-    // Deep Research needs longer timeout
-    const defaultTimeout = mode === 'deep-research' ? 600 : 300;
+    const isDeepResearch = mode === 'deep-research';
+    const defaultTimeout = isDeepResearch ? 600 : 300;
     const timeoutSec = (kwargs.timeout as number) || defaultTimeout;
     const timeoutMs = timeoutSec * 1000;
 
@@ -238,23 +243,31 @@ cli({
     await page.wait(3);
 
     // Select mode
-    await selectMode(page, mode);
+    if (isDeepResearch) {
+      await selectDeepResearch(page);
+    } else if (mode !== 'quick') {
+      await selectThinkMode(page, mode);
+    }
 
     // Send prompt
-    const sent = await sendPrompt(page, prompt, mode);
+    const sent = await sendPrompt(page, prompt);
     if (!sent) {
       return [{ text: 'Error: Failed to send prompt' }];
     }
 
-    // Deep Research may need confirmation
-    if (mode === 'deep-research') {
-      await confirmResearchDirection(page);
+    // Deep Research: wait for and click confirmation
+    if (isDeepResearch) {
+      await page.wait(3);
+      const confirmed = await confirmResearchStart(page, 60);
+      if (!confirmed) {
+        return [{ text: 'Error: Failed to find Start research button within 60s' }];
+      }
     }
 
     await page.wait(3);
 
     // Wait for response
-    const response = await waitForResponse(page, timeoutMs, mode);
+    const response = await waitForResponse(page, timeoutMs, isDeepResearch);
 
     return [{ text: response.substring(0, 15000) }];
   }
