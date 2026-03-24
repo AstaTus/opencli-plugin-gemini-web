@@ -8,12 +8,45 @@ const GEMINI_URL = 'https://gemini.google.com/app';
 const MODE_LABELS: Record<string, string> = {
   'quick': '快速',
   'think': '思考',
-  'pro': 'Pro'
+  'pro': 'Pro',
+  'deep-research': 'Deep Research'
 };
 
 async function selectMode(page: any, mode: string): Promise<void> {
   if (mode === 'quick') return;
 
+  if (mode === 'deep-research') {
+    // Deep Research is in the tools menu
+    await page.evaluate(`
+      (async () => {
+        // Find and click "工具" button
+        const buttons = document.querySelectorAll('button');
+        for (const btn of buttons) {
+          const text = btn.innerText?.trim();
+          if (text === '工具') {
+            btn.click();
+            await new Promise(r => setTimeout(r, 1000));
+            break;
+          }
+        }
+
+        // Find and click "Deep Research"
+        const items = document.querySelectorAll('button, [role="menuitem"]');
+        for (const item of items) {
+          const text = (item.innerText || '').trim();
+          if (text.includes('Deep Research')) {
+            item.click();
+            break;
+          }
+        }
+      })()
+    `);
+
+    await page.wait(1);
+    return;
+  }
+
+  // Other modes from mode selector
   const targetMode = MODE_LABELS[mode];
   if (!targetMode) return;
 
@@ -39,7 +72,34 @@ async function selectMode(page: any, mode: string): Promise<void> {
   await page.wait(0.8);
 }
 
-async function sendPrompt(page: any, prompt: string): Promise<boolean> {
+async function confirmResearchDirection(page: any): Promise<void> {
+  // Deep Research may show a confirmation dialog
+  await page.wait(3);
+
+  await page.evaluate(`
+    (async () => {
+      // Look for confirmation button
+      const buttons = document.querySelectorAll('button');
+      for (const btn of buttons) {
+        const text = btn.innerText?.trim();
+        const label = btn.getAttribute('aria-label');
+        if (text === '开始研究' || text === 'Start Research' ||
+            text === '确认' || text === 'Confirm' ||
+            label?.includes('开始') || label?.includes('Start')) {
+          btn.click();
+          return;
+        }
+      }
+
+      // Try pressing Enter as fallback
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    })()
+  `);
+
+  await page.wait(1);
+}
+
+async function sendPrompt(page: any, prompt: string, mode: string): Promise<boolean> {
   return page.evaluate(`
     (async () => {
       const editor = document.querySelector('rich-textarea div.ql-editor');
@@ -77,10 +137,13 @@ async function sendPrompt(page: any, prompt: string): Promise<boolean> {
   `) as Promise<boolean>;
 }
 
-async function waitForResponse(page: any, timeoutMs: number): Promise<string> {
+async function waitForResponse(page: any, timeoutMs: number, mode: string): Promise<string> {
   const startTime = Date.now();
   let lastText = '';
   let stableCount = 0;
+
+  // Deep Research needs more stability checks
+  const requiredStable = mode === 'deep-research' ? 5 : 3;
 
   while (Date.now() - startTime < timeoutMs) {
     await page.wait(2);
@@ -120,7 +183,7 @@ async function waitForResponse(page: any, timeoutMs: number): Promise<string> {
     if (text && text.length > 5) {
       if (text === lastText) {
         stableCount++;
-        if (stableCount >= 3 && !isGenerating) {
+        if (stableCount >= requiredStable && !isGenerating) {
           return text;
         }
       } else {
@@ -152,20 +215,22 @@ cli({
       name: 'mode',
       type: 'string',
       default: 'quick',
-      help: 'Response mode: quick (快速), think (思考), pro (Pro)'
+      help: 'Response mode: quick (快速), think (思考), pro (Pro), deep-research (Deep Research)'
     },
     {
       name: 'timeout',
       type: 'int',
       default: 300,
-      help: 'Max seconds to wait for response (default: 300)'
+      help: 'Max seconds to wait for response (default: 300, deep-research: 600)'
     }
   ],
   columns: ['text'],
   func: async (page, kwargs) => {
     const prompt = kwargs.prompt as string;
     const mode = (kwargs.mode as string) || 'quick';
-    const timeoutSec = (kwargs.timeout as number) || 300;
+    // Deep Research needs longer timeout
+    const defaultTimeout = mode === 'deep-research' ? 600 : 300;
+    const timeoutSec = (kwargs.timeout as number) || defaultTimeout;
     const timeoutMs = timeoutSec * 1000;
 
     // Navigate to Gemini
@@ -176,16 +241,21 @@ cli({
     await selectMode(page, mode);
 
     // Send prompt
-    const sent = await sendPrompt(page, prompt);
+    const sent = await sendPrompt(page, prompt, mode);
     if (!sent) {
       return [{ text: 'Error: Failed to send prompt' }];
+    }
+
+    // Deep Research may need confirmation
+    if (mode === 'deep-research') {
+      await confirmResearchDirection(page);
     }
 
     await page.wait(3);
 
     // Wait for response
-    const response = await waitForResponse(page, timeoutMs);
+    const response = await waitForResponse(page, timeoutMs, mode);
 
-    return [{ text: response.substring(0, 10000) }];
+    return [{ text: response.substring(0, 15000) }];
   }
 });
