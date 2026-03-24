@@ -191,15 +191,12 @@ async function sendPrompt(page: any, prompt: string): Promise<boolean> {
 
       if (!editor) return { success: false, error: 'Editor not found' };
 
+      // Don't rely on focus - directly manipulate content
       editor.focus();
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 100));
 
-      // Clear and insert
-      const range = document.createRange();
-      range.selectNodeContents(editor);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
+      // Clear using execCommand (works even without focus)
+      document.execCommand('selectAll', false, null);
       document.execCommand('delete', false, null);
 
       await new Promise(r => setTimeout(r, 200));
