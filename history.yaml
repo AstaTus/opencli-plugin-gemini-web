@@ -1,4 +1,4 @@
-site: gemini
+site: gemini-web
 name: history
 description: List recent Gemini conversations
 domain: gemini.google.com

@@ -1,4 +1,4 @@
-site: gemini
+site: gemini-web
 name: status
 description: Check Gemini login status
 domain: gemini.google.com

@@ -1,4 +1,4 @@
-site: gemini
+site: gemini-web
 name: read
 description: Read the last response from Gemini
 domain: gemini.google.com

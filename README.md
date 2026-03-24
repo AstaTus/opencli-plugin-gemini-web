@@ -28,32 +28,32 @@ git clone https://github.com/AstaTus/opencli-plugin-gemini-web \
 ### Check Status
 
 ```bash
-opencli gemini status
+opencli gemini-web status
 ```
 
 ### Start a New Conversation
 
 ```bash
-opencli gemini new
+opencli gemini-web new
 ```
 
 ### Ask Gemini a Question
 
 ```bash
-opencli gemini ask "What is the capital of France?"
-opencli gemini ask "解释量子计算" --wait 20
+opencli gemini-web ask "What is the capital of France?"
+opencli gemini-web ask "解释量子计算" --wait 20
 ```
 
 ### Read Last Response
 
 ```bash
-opencli gemini read
+opencli gemini-web read
 ```
 
 ### List Conversation History
 
 ```bash
-opencli gemini history --limit 10
+opencli gemini-web history --limit 10
 ```
 
 ## Commands
@@ -71,9 +71,9 @@ opencli gemini history --limit 10
 All commands support multiple output formats:
 
 ```bash
-opencli gemini history -f json    # JSON output
-opencli gemini history -f yaml    # YAML output
-opencli gemini history -f table   # Table output (default)
+opencli gemini-web history -f json    # JSON output
+opencli gemini-web history -f yaml    # YAML output
+opencli gemini-web history -f table   # Table output (default)
 ```
 
 ## Development
@@ -82,12 +82,11 @@ opencli gemini history -f table   # Table output (default)
 
 ```
 opencli-plugin-gemini-web/
-├── clis/
-│   ├── ask.yaml      # Send message command
-│   ├── new.yaml      # New conversation command
-│   ├── read.yaml     # Read response command
-│   ├── history.yaml  # List conversations command
-│   └── status.yaml   # Status check command
+├── ask.yaml          # Send message command
+├── new.yaml          # New conversation command
+├── read.yaml         # Read response command
+├── history.yaml      # List conversations command
+├── status.yaml       # Status check command
 ├── package.json
 ├── AGENT.md
 └── README.md
@@ -105,7 +104,7 @@ Make sure you are logged into Gemini in Chrome:
 ### Empty responses
 
 - Ensure the page has fully loaded before running commands
-- Try increasing the wait time: `opencli gemini ask "..." --wait 30`
+- Try increasing the wait time: `opencli gemini-web ask "..." --wait 30`
 
 ### Extension not connected
 

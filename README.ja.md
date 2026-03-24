@@ -26,32 +26,32 @@ git clone https://github.com/AstaTus/opencli-plugin-gemini-web \
 ### ステータス確認
 
 ```bash
-opencli gemini status
+opencli gemini-web status
 ```
 
 ### 新しい会話を開始
 
 ```bash
-opencli gemini new
+opencli gemini-web new
 ```
 
 ### Gemini に質問する
 
 ```bash
-opencli gemini ask "フランスの首都はどこですか？"
-opencli gemini ask "量子コンピューティングについて説明して" --wait 20
+opencli gemini-web ask "フランスの首都はどこですか？"
+opencli gemini-web ask "量子コンピューティングについて説明して" --wait 20
 ```
 
 ### 最新の回答を読み取る
 
 ```bash
-opencli gemini read
+opencli gemini-web read
 ```
 
 ### 会話履歴を表示
 
 ```bash
-opencli gemini history --limit 10
+opencli gemini-web history --limit 10
 ```
 
 ## コマンド一覧
@@ -69,21 +69,20 @@ opencli gemini history --limit 10
 すべてのコマンドは複数の出力形式をサポート：
 
 ```bash
-opencli gemini history -f json    # JSON 形式
-opencli gemini history -f yaml    # YAML 形式
-opencli gemini history -f table   # テーブル形式（デフォルト）
+opencli gemini-web history -f json    # JSON 形式
+opencli gemini-web history -f yaml    # YAML 形式
+opencli gemini-web history -f table   # テーブル形式（デフォルト）
 ```
 
 ## プロジェクト構成
 
 ```
 opencli-plugin-gemini-web/
-├── clis/
-│   ├── ask.yaml      # メッセージ送信
-│   ├── new.yaml      # 新規会話
-│   ├── read.yaml     # 回答読み取り
-│   ├── history.yaml  # 履歴一覧
-│   └── status.yaml   # ステータス確認
+├── ask.yaml          # メッセージ送信
+├── new.yaml          # 新規会話
+├── read.yaml         # 回答読み取り
+├── history.yaml      # 履歴一覧
+├── status.yaml       # ステータス確認
 ├── package.json
 ├── AGENT.md
 └── README.md
@@ -101,7 +100,7 @@ Chrome で Gemini にログインしていることを確認：
 ### 空のレスポンス
 
 - ページが完全に読み込まれていることを確認
-- 待機時間を増やす：`opencli gemini ask "..." --wait 30`
+- 待機時間を増やす：`opencli gemini-web ask "..." --wait 30`
 
 ### 拡張機能が接続されていない
 

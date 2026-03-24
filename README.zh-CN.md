@@ -26,32 +26,32 @@ git clone https://github.com/AstaTus/opencli-plugin-gemini-web \
 ### 检查状态
 
 ```bash
-opencli gemini status
+opencli gemini-web status
 ```
 
 ### 开始新对话
 
 ```bash
-opencli gemini new
+opencli gemini-web new
 ```
 
 ### 向 Gemini 提问
 
 ```bash
-opencli gemini ask "法国的首都是哪里？"
-opencli gemini ask "解释量子计算" --wait 20
+opencli gemini-web ask "法国的首都是哪里？"
+opencli gemini-web ask "解释量子计算" --wait 20
 ```
 
 ### 读取最后回复
 
 ```bash
-opencli gemini read
+opencli gemini-web read
 ```
 
 ### 查看对话历史
 
 ```bash
-opencli gemini history --limit 10
+opencli gemini-web history --limit 10
 ```
 
 ## 命令列表
@@ -69,21 +69,20 @@ opencli gemini history --limit 10
 所有命令支持多种输出格式：
 
 ```bash
-opencli gemini history -f json    # JSON 格式
-opencli gemini history -f yaml    # YAML 格式
-opencli gemini history -f table   # 表格格式（默认）
+opencli gemini-web history -f json    # JSON 格式
+opencli gemini-web history -f yaml    # YAML 格式
+opencli gemini-web history -f table   # 表格格式（默认）
 ```
 
 ## 项目结构
 
 ```
 opencli-plugin-gemini-web/
-├── clis/
-│   ├── ask.yaml      # 发送消息
-│   ├── new.yaml      # 新建对话
-│   ├── read.yaml     # 读取回复
-│   ├── history.yaml  # 历史记录
-│   └── status.yaml   # 状态检查
+├── ask.yaml          # 发送消息
+├── new.yaml          # 新建对话
+├── read.yaml         # 读取回复
+├── history.yaml      # 历史记录
+├── status.yaml       # 状态检查
 ├── package.json
 ├── AGENT.md
 └── README.md
@@ -101,7 +100,7 @@ opencli-plugin-gemini-web/
 ### 空响应
 
 - 确保页面已完全加载
-- 尝试增加等待时间：`opencli gemini ask "..." --wait 30`
+- 尝试增加等待时间：`opencli gemini-web ask "..." --wait 30`
 
 ### 扩展未连接
 

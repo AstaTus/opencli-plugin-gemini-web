@@ -1,4 +1,4 @@
-site: gemini
+site: gemini-web
 name: new
 description: Start a new conversation in Gemini
 domain: gemini.google.com

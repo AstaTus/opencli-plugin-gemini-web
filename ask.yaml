@@ -1,4 +1,4 @@
-site: gemini
+site: gemini-web
 name: ask
 description: Send a message to Gemini and get response
 domain: gemini.google.com
