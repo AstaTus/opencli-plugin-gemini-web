@@ -1,0 +1,22 @@
+{
+  "name": "opencli-plugin-gemini-web",
+  "version": "1.0.0",
+  "description": "OpenCLI plugin for Google Gemini web interface",
+  "type": "module",
+  "keywords": [
+    "opencli",
+    "gemini",
+    "google",
+    "ai",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "@jackwener/opencli": ">=1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/opencli-plugin-gemini-web"
+  }
+}

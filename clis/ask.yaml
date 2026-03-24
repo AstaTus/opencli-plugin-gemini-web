@@ -1,0 +1,118 @@
+site: gemini
+name: ask
+description: Send a message to Gemini and get response
+domain: gemini.google.com
+
+args:
+  prompt:
+    type: string
+    required: true
+    positional: true
+    description: "Message to send to Gemini"
+  wait:
+    type: int
+    default: 30
+    description: "Seconds to wait for response"
+
+pipeline:
+  - navigate: https://gemini.google.com/app
+
+  - wait: 3
+
+  - evaluate: |
+      (async () => {
+        const prompt = ${{ JSON.stringify(args.prompt) }};
+        const waitTime = ${{ args.wait }};
+
+        // Find the editable div inside rich-textarea
+        const inputEl = document.querySelector('rich-textarea div.ql-editor') ||
+                        document.querySelector('div.ql-editor[contenteditable="true"]');
+
+        if (!inputEl) {
+          return [{ text: 'Error: Cannot find input area' }];
+        }
+
+        // Focus input
+        inputEl.focus();
+        inputEl.click();
+
+        await new Promise(r => setTimeout(r, 300));
+
+        // Use document.execCommand to insert text (bypasses TrustedHTML)
+        inputEl.focus();
+        document.execCommand('selectAll', false, null);
+        document.execCommand('delete', false, null);
+
+        await new Promise(r => setTimeout(r, 100));
+
+        // Insert text character by character using execCommand
+        document.execCommand('insertText', false, prompt);
+
+        await new Promise(r => setTimeout(r, 500));
+
+        // Find send button with aria-label="发送"
+        let sendBtn = null;
+        document.querySelectorAll('button').forEach(btn => {
+          if (btn.getAttribute('aria-label') === '发送' && !btn.disabled) {
+            sendBtn = btn;
+          }
+        });
+
+        if (sendBtn) {
+          sendBtn.click();
+        } else {
+          // Fallback: press Enter
+          inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+          inputEl.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', keyCode: 13, bubbles: true }));
+          inputEl.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', keyCode: 13, bubbles: true }));
+        }
+
+        // Wait for response
+        await new Promise(r => setTimeout(r, waitTime * 1000));
+
+        // Find response - look for model-response or the last message in chat-window
+        const chatWindow = document.querySelector('chat-window');
+        let responseText = '';
+
+        if (chatWindow) {
+          // Get all message content elements
+          const messages = chatWindow.querySelectorAll('message-content, model-response, .message-content');
+          if (messages.length > 0) {
+            responseText = messages[messages.length - 1]?.textContent?.trim() || '';
+          }
+
+          // Fallback: try to find response by looking for the last large text block
+          if (!responseText) {
+            const allDivs = chatWindow.querySelectorAll('div[data-test-id], div[class*="response"], div[class*="message"]');
+            for (let i = allDivs.length - 1; i >= 0; i--) {
+              const text = allDivs[i]?.textContent?.trim();
+              if (text && text.length > 20) {
+                responseText = text;
+                break;
+              }
+            }
+          }
+        }
+
+        // Last resort: get text from main content area
+        if (!responseText) {
+          const main = document.querySelector('main.chat-app');
+          if (main) {
+            const text = main.textContent || '';
+            // Try to extract just the response part
+            const lines = text.split('\n').filter(l => l.trim().length > 10);
+            if (lines.length > 0) {
+              responseText = lines[lines.length - 1];
+            }
+          }
+        }
+
+        if (responseText && responseText.length > 0) {
+          // Limit response length
+          return [{ text: responseText.substring(0, 3000) }];
+        }
+
+        return [{ text: 'Response sent. Use "opencli gemini read" to get the response.' }];
+      })()
+
+columns: [text]

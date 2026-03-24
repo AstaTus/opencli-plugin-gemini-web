@@ -1,0 +1,48 @@
+site: gemini
+name: status
+description: Check Gemini login status
+domain: gemini.google.com
+
+args: {}
+
+pipeline:
+  - navigate: https://gemini.google.com/app
+
+  - wait: 3
+
+  - evaluate: |
+      (() => {
+        // Check for login indicators
+        const loginSelectors = [
+          '.user-avatar',
+          '.profile-icon',
+          '[data-ogsr-up]',
+          'button[aria-label*="Account"]',
+          '.logged-in-indicator'
+        ];
+
+        let isLoggedIn = false;
+        for (const sel of loginSelectors) {
+          if (document.querySelector(sel)) {
+            isLoggedIn = true;
+            break;
+          }
+        }
+
+        // Check for login page
+        const loginPage = document.querySelector('form[action*="login"], #login-form, .signin-page');
+        if (loginPage) {
+          return [{ status: 'NOT_LOGGED_IN', message: 'Please log in to Gemini in your browser' }];
+        }
+
+        // Check for main app
+        const appPresent = document.querySelector('.gemini-app, main, app-root, #main, chat-window');
+
+        if (isLoggedIn || appPresent) {
+          return [{ status: 'OK', message: 'Connected to Gemini' }];
+        }
+
+        return [{ status: 'UNKNOWN', message: 'Unable to determine status' }];
+      })()
+
+columns: [status, message]
