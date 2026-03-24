@@ -8,11 +8,10 @@ const GEMINI_URL = 'https://gemini.google.com/app';
 const MODE_LABELS: Record<string, string> = {
   'quick': '快速',
   'think': '思考',
-  'pro': 'Pro',
-  'deep-research': 'Deep Research'
+  'pro': 'Pro'
 };
 
-async function selectDeepResearch(page: any): Promise<void> {
+async function enableDeepResearch(page: any): Promise<void> {
   await page.evaluate(`
     (async () => {
       // Click 工具 button
@@ -41,18 +40,35 @@ async function selectDeepResearch(page: any): Promise<void> {
   await page.wait(1);
 }
 
-async function selectThinkMode(page: any, mode: string): Promise<void> {
+async function selectMode(page: any, mode: string): Promise<void> {
+  if (mode === 'quick') return;
+
   const targetMode = MODE_LABELS[mode];
   if (!targetMode) return;
 
   await page.evaluate(`
     (async () => {
-      const modeBtn = document.querySelector('button[aria-label*="模式"]');
+      // Find mode selector button (shows current mode like "快速")
+      const buttons = document.querySelectorAll('button');
+      let modeBtn = null;
+
+      for (const btn of buttons) {
+        const text = btn.innerText?.trim();
+        const aria = btn.getAttribute('aria-label') || '';
+        // Mode button shows current mode and has aria-label about mode
+        if ((text === '快速' || text === '思考' || text === 'Pro') &&
+            (aria.includes('模式') || aria.includes('mode'))) {
+          modeBtn = btn;
+          break;
+        }
+      }
+
       if (!modeBtn) return;
 
       modeBtn.click();
       await new Promise(r => setTimeout(r, 800));
 
+      // Find and click target mode
       const items = document.querySelectorAll('[role="menuitem"], button');
       for (const item of items) {
         const text = (item.innerText || '').trim();
@@ -153,7 +169,7 @@ async function waitForResponse(page: any, timeoutMs: number, isDeepResearch: boo
         const stopBtn = document.querySelector('button[aria-label="停止生成"]');
         const isGenerating = !!stopBtn;
 
-        // Check for deep research progress indicator
+        // Check for deep research progress
         const progressEl = document.querySelector('[class*="progress"], [class*="loading"]');
         const hasProgress = !!progressEl;
 
@@ -220,21 +236,27 @@ cli({
       name: 'mode',
       type: 'string',
       default: 'quick',
-      help: 'Response mode: quick, think, pro, deep-research'
+      help: 'Response mode: quick (default), think, pro'
+    },
+    {
+      name: 'deep-research',
+      type: 'boolean',
+      default: false,
+      help: 'Enable Deep Research mode (can combine with --mode)'
     },
     {
       name: 'timeout',
       type: 'int',
       default: 300,
-      help: 'Max seconds to wait for response (default: 300, deep-research: 600)'
+      help: 'Max seconds to wait (default: 300, deep-research: 600)'
     }
   ],
   columns: ['text'],
   func: async (page, kwargs) => {
     const prompt = kwargs.prompt as string;
     const mode = (kwargs.mode as string) || 'quick';
-    const isDeepResearch = mode === 'deep-research';
-    const defaultTimeout = isDeepResearch ? 600 : 300;
+    const useDeepResearch = kwargs['deep-research'] as boolean;
+    const defaultTimeout = useDeepResearch ? 600 : 300;
     const timeoutSec = (kwargs.timeout as number) || defaultTimeout;
     const timeoutMs = timeoutSec * 1000;
 
@@ -242,11 +264,14 @@ cli({
     await page.goto(GEMINI_URL);
     await page.wait(3);
 
-    // Select mode
-    if (isDeepResearch) {
-      await selectDeepResearch(page);
-    } else if (mode !== 'quick') {
-      await selectThinkMode(page, mode);
+    // Enable Deep Research first (if requested)
+    if (useDeepResearch) {
+      await enableDeepResearch(page);
+    }
+
+    // Select response mode
+    if (mode !== 'quick') {
+      await selectMode(page, mode);
     }
 
     // Send prompt
@@ -256,7 +281,7 @@ cli({
     }
 
     // Deep Research: wait for and click confirmation
-    if (isDeepResearch) {
+    if (useDeepResearch) {
       await page.wait(3);
       const confirmed = await confirmResearchStart(page, 60);
       if (!confirmed) {
@@ -267,7 +292,7 @@ cli({
     await page.wait(3);
 
     // Wait for response
-    const response = await waitForResponse(page, timeoutMs, isDeepResearch);
+    const response = await waitForResponse(page, timeoutMs, useDeepResearch);
 
     return [{ text: response.substring(0, 15000) }];
   }

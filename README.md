@@ -78,10 +78,10 @@ opencli gemini-web history -f table   # Table output (default)
 
 ```
 opencli-plugin-gemini-web/
-├── ask.ts            # Send message and wait for response (TypeScript)
-├── new.yaml          # New conversation command
-├── history.yaml      # List conversations command
-├── status.yaml       # Status check command
+├── ask.ts            # Main ask command (TypeScript)
+├── new.yaml          # New conversation
+├── history.yaml      # List conversations
+├── status.yaml       # Status check
 ├── package.json
 ├── AGENT.md
 └── README.md
@@ -126,18 +126,27 @@ opencli gemini-web ask "分析量子计算的原理" --mode think
 # Use Pro mode for advanced tasks
 opencli gemini-web ask "Write a complex algorithm" --mode pro
 
-# Use Deep Research for in-depth research (default 600s timeout)
-opencli gemini-web ask "Compare Python vs JavaScript ecosystems" --mode deep-research
+# Deep Research (default 600s timeout)
+opencli gemini-web ask "Compare Python vs JavaScript ecosystems" --deep-research
+
+# Deep Research + Pro mode combined
+opencli gemini-web ask "Analyze market trends" --deep-research --mode pro
 
 # Custom timeout
 opencli gemini-web ask "复杂问题" --timeout 600
 ```
 
+**Parameters:**
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--mode` | `quick` | Response mode: quick, think, pro |
+| `--deep-research` | `false` | Enable Deep Research (can combine with --mode) |
+| `--timeout` | 300/600 | Max seconds (600 for deep-research) |
+
 **Modes:**
 - `quick` (default): Fast response
 - `think`: Deep thinking for complex problems
 - `pro`: Advanced capabilities
-- `deep-research`: In-depth research with auto-confirmation (600s default timeout)
 
 ### List Conversation History
 
