@@ -2,8 +2,20 @@
  * Gemini Web ask command — send message and wait for response
  */
 import { cli, Strategy } from '@jackwener/opencli/registry';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
+const execAsync = promisify(exec);
 const GEMINI_URL = 'https://gemini.google.com/app';
+
+// Bring Chrome to front (macOS)
+async function activateChrome(): Promise<void> {
+  try {
+    await execAsync(`osascript -e 'tell application "Google Chrome" to activate'`);
+  } catch {
+    // Ignore errors - Chrome might not be named exactly "Google Chrome"
+  }
+}
 
 const MODE_LABELS: Record<string, string> = {
   'quick': '快速',
@@ -316,6 +328,9 @@ cli({
   ],
   columns: ['text'],
   func: async (page, kwargs) => {
+    // Bring Chrome to front first
+    await activateChrome();
+
     const prompt = kwargs.prompt as string;
     const mode = (kwargs.mode as string) || 'quick';
     const useDeepResearch = kwargs['deep-research'] as boolean;
