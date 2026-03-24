@@ -12,32 +12,39 @@ const MODE_LABELS: Record<string, string> = {
 };
 
 async function enableDeepResearch(page: any): Promise<void> {
+  // Click 工具 button
   await page.evaluate(`
-    (async () => {
-      // Click 工具 button
+    (() => {
       const buttons = document.querySelectorAll('button');
       for (const btn of buttons) {
         const text = btn.innerText?.trim();
         if (text === '工具') {
           btn.click();
-          await new Promise(r => setTimeout(r, 1000));
-          break;
-        }
-      }
-
-      // Click Deep Research
-      const items = document.querySelectorAll('button, [role="menuitem"]');
-      for (const item of items) {
-        const text = (item.innerText || '').trim();
-        if (text.includes('Deep Research')) {
-          item.click();
-          break;
+          return;
         }
       }
     })()
   `);
 
-  await page.wait(1);
+  // Wait for menu to open
+  await page.wait(1.5);
+
+  // Click Deep Research
+  await page.evaluate(`
+    (() => {
+      const items = document.querySelectorAll('button, [role="menuitem"], div[role="button"]');
+      for (const item of items) {
+        const text = (item.innerText || '').trim();
+        if (text.includes('Deep Research') && text.length < 30) {
+          item.click();
+          return;
+        }
+      }
+    })()
+  `);
+
+  // Wait for Deep Research UI to load
+  await page.wait(2);
 }
 
 async function selectMode(page: any, mode: string): Promise<void> {
@@ -46,41 +53,41 @@ async function selectMode(page: any, mode: string): Promise<void> {
   const targetMode = MODE_LABELS[mode];
   if (!targetMode) return;
 
+  // Click mode selector
   await page.evaluate(`
-    (async () => {
-      // Find mode selector button (shows current mode like "快速")
+    (() => {
       const buttons = document.querySelectorAll('button');
-      let modeBtn = null;
-
       for (const btn of buttons) {
         const text = btn.innerText?.trim();
         const aria = btn.getAttribute('aria-label') || '';
-        // Mode button shows current mode and has aria-label about mode
+        // Mode button shows current mode name
         if ((text === '快速' || text === '思考' || text === 'Pro') &&
-            (aria.includes('模式') || aria.includes('mode'))) {
-          modeBtn = btn;
-          break;
-        }
-      }
-
-      if (!modeBtn) return;
-
-      modeBtn.click();
-      await new Promise(r => setTimeout(r, 800));
-
-      // Find and click target mode
-      const items = document.querySelectorAll('[role="menuitem"], button');
-      for (const item of items) {
-        const text = (item.innerText || '').trim();
-        if (text.includes('${targetMode}') && text.length < 50) {
-          item.click();
-          break;
+            (aria.includes('模式') || aria.includes('mode') || btn.className.includes('mode'))) {
+          btn.click();
+          return;
         }
       }
     })()
   `);
 
-  await page.wait(0.8);
+  await page.wait(1);
+
+  // Click target mode
+  const modeScript = `
+    (() => {
+      const items = document.querySelectorAll('[role="menuitem"], button');
+      for (const item of items) {
+        const text = (item.innerText || '').trim();
+        if (text.includes('${targetMode}') && text.length < 30) {
+          item.click();
+          return;
+        }
+      }
+    })()
+  `;
+
+  await page.evaluate(modeScript);
+  await page.wait(1);
 }
 
 async function confirmResearchStart(page: any, maxWaitSec: number): Promise<boolean> {
@@ -92,14 +99,13 @@ async function confirmResearchStart(page: any, maxWaitSec: number): Promise<bool
 
     const clicked = await page.evaluate(`
       (() => {
-        // Look for "Start research" button
         const btns = document.querySelectorAll('button');
         for (const btn of btns) {
           const text = btn.innerText?.trim();
           const aria = btn.getAttribute('aria-label') || '';
 
           if (text === 'Start research' || aria === 'Start research' ||
-              text === '开始研究' || aria.includes('Start research')) {
+              text === '开始研究' || text === '开始') {
             btn.click();
             return true;
           }
@@ -165,36 +171,26 @@ async function waitForResponse(page: any, timeoutMs: number, isDeepResearch: boo
 
     const result = await page.evaluate(`
       (() => {
-        // Check if still generating
         const stopBtn = document.querySelector('button[aria-label="停止生成"]');
         const isGenerating = !!stopBtn;
 
-        // Check for deep research progress
-        const progressEl = document.querySelector('[class*="progress"], [class*="loading"]');
-        const hasProgress = !!progressEl;
-
-        // Get chat content
         const chatWindow = document.querySelector('chat-window');
-        if (!chatWindow) return { text: '', generating: isGenerating || hasProgress };
+        if (!chatWindow) return { text: '', generating: isGenerating };
 
         const fullText = chatWindow.innerText || '';
         const idx = fullText.indexOf('Gemini 说');
 
-        if (idx < 0) return { text: '', generating: isGenerating || hasProgress };
+        if (idx < 0) return { text: '', generating: isGenerating };
 
         let response = fullText.substring(idx + 8);
-
-        // Remove UI noise
         response = response
           .replace(/\\n工具[\\s\\S]*$/, '')
           .replace(/\\nGemini 是一款[\\s\\S]*$/, '')
           .replace(/\\n快速[\\s\\S]*$/, '')
           .replace(/\\n升级到[\\s\\S]*$/, '')
-          .replace(/\\n来源\\n[\\s\\S]*$/, '')
-          .replace(/\\n文件\\n[\\s\\S]*$/, '')
           .trim();
 
-        return { text: response, generating: isGenerating || hasProgress };
+        return { text: response, generating: isGenerating };
       })()
     `);
 
@@ -262,7 +258,7 @@ cli({
 
     // Navigate to Gemini
     await page.goto(GEMINI_URL);
-    await page.wait(3);
+    await page.wait(4);
 
     // Enable Deep Research first (if requested)
     if (useDeepResearch) {
@@ -282,7 +278,7 @@ cli({
 
     // Deep Research: wait for and click confirmation
     if (useDeepResearch) {
-      await page.wait(3);
+      await page.wait(5);
       const confirmed = await confirmResearchStart(page, 60);
       if (!confirmed) {
         return [{ text: 'Error: Failed to find Start research button within 60s' }];
