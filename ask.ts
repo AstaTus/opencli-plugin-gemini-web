@@ -27,9 +27,6 @@ const RESPONSE_STABLE_COUNT = 2;            // Number of consecutive same reads
 // Deep Research specific
 const DEEP_RESEARCH_CONFIRM_TIMEOUT_SEC = 60;  // Max seconds to wait for "Start research" button
 
-// Response length limits
-const MAX_RESPONSE_LENGTH = 15_000;
-
 // Mode labels (Chinese UI)
 const MODE_LABELS: Record<string, string> = {
   'quick': '快速',
@@ -464,7 +461,7 @@ cli({
     const response = await waitForResponse(page, timeoutMs, useDeepResearch);
 
     // Direct output without table
-    console.log(response.substring(0, MAX_RESPONSE_LENGTH));
+    console.log(response);
     return [];
   }
 });
