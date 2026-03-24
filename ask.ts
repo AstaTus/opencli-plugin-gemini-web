@@ -34,6 +34,10 @@ const MODE_LABELS: Record<string, string> = {
   'pro': 'Pro'
 };
 
+// UI Mode values (what appears in the mode button)
+const UI_MODE_VALUES = ['快速', '思考', 'Pro'] as const;
+type UIMode = typeof UI_MODE_VALUES[number];
+
 // ============================================================================
 // Browser Window Management
 // ============================================================================
@@ -97,6 +101,75 @@ async function clickButtonByText(
     })()
   `);
   return result === true;
+}
+
+// ============================================================================
+// UI State Detection
+// ============================================================================
+
+interface UIState {
+  mode: UIMode | null;
+  deepResearchEnabled: boolean;
+}
+
+/**
+ * Get current UI state (mode and Deep Research status)
+ */
+async function getUIState(page: any): Promise<UIState> {
+  const result = await page.evaluate(`
+    (() => {
+      // Find mode button - it shows the current mode name
+      let currentMode: string | null = null;
+      const buttons = document.querySelectorAll('button');
+
+      for (const btn of buttons) {
+        const text = btn.innerText?.trim();
+        // Mode button is near the input area
+        if ((text === '快速' || text === '思考' || text === 'Pro') && text.length < 10) {
+          const rect = btn.getBoundingClientRect();
+          if (rect.bottom > window.innerHeight * 0.5) {
+            currentMode = text;
+            break;
+          }
+        }
+      }
+
+      // Check if Deep Research is enabled
+      // Look for "Deep Research" badge/indicator in the UI
+      const bodyText = document.body.innerText || '';
+      const deepResearchEnabled = bodyText.includes('Deep Research') &&
+                                   bodyText.includes('来源') &&
+                                   bodyText.includes('文件');
+
+      return {
+        mode: currentMode,
+        deepResearchEnabled
+      };
+    })()
+  `);
+
+  return {
+    mode: result?.mode as UIMode | null,
+    deepResearchEnabled: result?.deepResearchEnabled || false
+  };
+}
+
+/**
+ * Reset UI to default state (quick mode, no Deep Research)
+ */
+async function resetUIToDefault(page: any): Promise<void> {
+  const state = await getUIState(page);
+
+  // If Deep Research is enabled, disable it by clicking new chat
+  if (state.deepResearchEnabled) {
+    await clickButtonByText(page, '新对话', ELEMENT_FIND_TIMEOUT_MS);
+    await new Promise(r => setTimeout(r, PAGE_LOAD_TIMEOUT_MS));
+  }
+
+  // If not in quick mode, switch to quick mode
+  if (state.mode && state.mode !== '快速') {
+    await selectMode(page, 'quick');
+  }
 }
 
 // ============================================================================
@@ -430,17 +503,34 @@ cli({
       return [{ text: 'Error: Page failed to load' }];
     }
 
-    // Enable Deep Research first (if requested)
-    if (useDeepResearch) {
-      const drEnabled = await enableDeepResearch(page);
-      if (!drEnabled) {
-        return [{ text: 'Error: Failed to enable Deep Research' }];
-      }
-    }
+    // Get current UI state
+    const uiState = await getUIState(page);
 
-    // Select response mode
-    if (mode !== 'quick') {
-      await selectMode(page, mode);
+    // If no special options specified, ensure UI is in default state
+    if (!useDeepResearch && mode === 'quick') {
+      // Reset to default if needed
+      if (uiState.deepResearchEnabled || (uiState.mode && uiState.mode !== '快速')) {
+        await resetUIToDefault(page);
+      }
+    } else {
+      // User specified options - configure accordingly
+
+      // Handle Deep Research
+      if (useDeepResearch && !uiState.deepResearchEnabled) {
+        const drEnabled = await enableDeepResearch(page);
+        if (!drEnabled) {
+          return [{ text: 'Error: Failed to enable Deep Research' }];
+        }
+      } else if (!useDeepResearch && uiState.deepResearchEnabled) {
+        // Disable Deep Research by starting new chat
+        await resetUIToDefault(page);
+      }
+
+      // Handle mode selection
+      const targetModeLabel = MODE_LABELS[mode];
+      if (targetModeLabel && uiState.mode !== targetModeLabel) {
+        await selectMode(page, mode);
+      }
     }
 
     // Send prompt
