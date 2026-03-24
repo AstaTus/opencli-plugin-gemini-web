@@ -126,6 +126,9 @@ opencli gemini-web ask "分析量子计算的原理" --mode think
 # Use Pro mode for advanced tasks
 opencli gemini-web ask "Write a complex algorithm" --mode pro
 
+# Use Deep Research for in-depth research (default 600s timeout)
+opencli gemini-web ask "Compare Python vs JavaScript ecosystems" --mode deep-research
+
 # Custom timeout
 opencli gemini-web ask "复杂问题" --timeout 600
 ```
@@ -134,6 +137,7 @@ opencli gemini-web ask "复杂问题" --timeout 600
 - `quick` (default): Fast response
 - `think`: Deep thinking for complex problems
 - `pro`: Advanced capabilities
+- `deep-research`: In-depth research with auto-confirmation (600s default timeout)
 
 ### List Conversation History
 

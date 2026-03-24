@@ -122,6 +122,9 @@ opencli gemini-web ask "分析量子计算的原理" --mode think
 # 使用 Pro 模式处理高级任务
 opencli gemini-web ask "编写一个复杂算法" --mode pro
 
+# 使用深度研究模式进行深入研究（默认 600 秒超时）
+opencli gemini-web ask "对比 Python 和 JavaScript 生态系统" --mode deep-research
+
 # 自定义超时时间
 opencli gemini-web ask "复杂问题" --timeout 600
 ```
@@ -130,6 +133,7 @@ opencli gemini-web ask "复杂问题" --timeout 600
 - `quick`（默认）：快速响应
 - `think`：深度思考，适合复杂问题
 - `pro`：高级功能
+- `deep-research`：深度研究，自动确认研究方向（默认 600 秒超时）
 
 ### 查看对话历史
 
