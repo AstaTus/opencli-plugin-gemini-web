@@ -238,7 +238,7 @@ async function waitForResponse(page: any, timeoutMs: number, isDeepResearch: boo
   const startTime = Date.now();
   let lastText = '';
   let stableCount = 0;
-  const requiredStable = isDeepResearch ? 5 : 3;
+  const requiredStable = 2;  // Only need 2 consecutive same reads
 
   while (Date.now() - startTime < timeoutMs) {
     const result = await page.evaluate(`
@@ -273,20 +273,28 @@ async function waitForResponse(page: any, timeoutMs: number, isDeepResearch: boo
     const text = (result?.text || '').trim();
     const isGenerating = result?.generating || false;
 
+    // If not generating and has content, check stability
     if (text && text.length > 5) {
-      if (text === lastText) {
-        stableCount++;
-        if (stableCount >= requiredStable && !isGenerating) {
-          return text;
+      if (!isGenerating) {
+        // Not generating - just need to confirm content is stable
+        if (text === lastText) {
+          stableCount++;
+          if (stableCount >= requiredStable) {
+            return text;
+          }
+        } else {
+          lastText = text;
+          stableCount = 1;  // First match counts as 1
         }
       } else {
+        // Still generating, just update lastText
         lastText = text;
         stableCount = 0;
       }
     }
 
-    // Use inline wait instead of page.wait
-    await new Promise(r => setTimeout(r, 2000));
+    // Faster polling: 500ms instead of 2000ms
+    await new Promise(r => setTimeout(r, 500));
   }
 
   return lastText || 'Timeout: No response received.';
