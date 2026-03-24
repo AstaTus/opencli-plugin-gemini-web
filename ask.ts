@@ -389,6 +389,8 @@ cli({
     // Wait for response
     const response = await waitForResponse(page, timeoutMs, useDeepResearch);
 
-    return [{ text: response.substring(0, 15000) }];
+    // Direct output without table
+    console.log(response.substring(0, 15000));
+    return [];
   }
 });
