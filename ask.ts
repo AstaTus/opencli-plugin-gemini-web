@@ -11,94 +11,149 @@ const MODE_LABELS: Record<string, string> = {
   'pro': 'Pro'
 };
 
-async function enableDeepResearch(page: any): Promise<void> {
-  // Click 工具 button
-  await page.evaluate(`
-    (() => {
-      const buttons = document.querySelectorAll('button');
-      for (const btn of buttons) {
-        const text = btn.innerText?.trim();
-        if (text === '工具') {
-          btn.click();
-          return;
+// Utility: wait for condition in page context
+const waitForInPage = (condition: string, timeoutMs: number = 5000) => `
+  (async () => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < ${timeoutMs}) {
+      const result = ${condition};
+      if (result) return result;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return null;
+  })()
+`;
+
+async function enableDeepResearch(page: any): Promise<boolean> {
+  const result = await page.evaluate(`
+    (async () => {
+      const timeout = 10000;
+      const startTime = Date.now();
+
+      // Step 1: Find and click 工具 button
+      let toolsBtn = null;
+      while (Date.now() - startTime < timeout) {
+        const buttons = document.querySelectorAll('button');
+        for (const btn of buttons) {
+          if (btn.innerText?.trim() === '工具') {
+            toolsBtn = btn;
+            break;
+          }
         }
+        if (toolsBtn) break;
+        await new Promise(r => setTimeout(r, 200));
       }
+
+      if (!toolsBtn) return { success: false, error: '工具 button not found' };
+      toolsBtn.click();
+
+      // Step 2: Wait for menu and find Deep Research
+      await new Promise(r => setTimeout(r, 300));
+
+      let drItem = null;
+      const menuStart = Date.now();
+      while (Date.now() - menuStart < 5000) {
+        const items = document.querySelectorAll('button, [role="menuitem"], div[role="button"]');
+        for (const item of items) {
+          const text = (item.innerText || '').trim();
+          // Deep Research button contains these keywords
+          if (text.includes('Deep Research') && text.length < 50 && item.offsetParent !== null) {
+            drItem = item;
+            break;
+          }
+        }
+        if (drItem) break;
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      if (!drItem) return { success: false, error: 'Deep Research item not found' };
+      drItem.click();
+
+      // Step 3: Verify Deep Research is enabled
+      await new Promise(r => setTimeout(r, 1000));
+
+      // Check for Deep Research indicator in UI
+      const body = document.body.innerText;
+      const enabled = body.includes('Deep Research') || body.includes('深度研究');
+
+      return { success: enabled, error: enabled ? null : 'Deep Research not enabled after click' };
     })()
   `);
 
-  // Wait for menu to open
-  await page.wait(1.5);
-
-  // Click Deep Research
-  await page.evaluate(`
-    (() => {
-      const items = document.querySelectorAll('button, [role="menuitem"], div[role="button"]');
-      for (const item of items) {
-        const text = (item.innerText || '').trim();
-        if (text.includes('Deep Research') && text.length < 30) {
-          item.click();
-          return;
-        }
-      }
-    })()
-  `);
-
-  // Wait for Deep Research UI to load
-  await page.wait(2);
+  return result?.success === true;
 }
 
-async function selectMode(page: any, mode: string): Promise<void> {
-  if (mode === 'quick') return;
+async function selectMode(page: any, mode: string): Promise<boolean> {
+  if (mode === 'quick') return true;
 
   const targetMode = MODE_LABELS[mode];
-  if (!targetMode) return;
+  if (!targetMode) return false;
 
-  // Click mode selector
-  await page.evaluate(`
-    (() => {
-      const buttons = document.querySelectorAll('button');
-      for (const btn of buttons) {
-        const text = btn.innerText?.trim();
-        const aria = btn.getAttribute('aria-label') || '';
-        // Mode button shows current mode name
-        if ((text === '快速' || text === '思考' || text === 'Pro') &&
-            (aria.includes('模式') || aria.includes('mode') || btn.className.includes('mode'))) {
-          btn.click();
-          return;
+  const result = await page.evaluate(`
+    (async () => {
+      const targetMode = '${targetMode}';
+      const timeout = 8000;
+      const startTime = Date.now();
+
+      // Find mode selector (shows current mode)
+      let modeBtn = null;
+      while (Date.now() - startTime < timeout) {
+        const buttons = document.querySelectorAll('button');
+        for (const btn of buttons) {
+          const text = btn.innerText?.trim();
+          const aria = btn.getAttribute('aria-label') || '';
+          // Mode button shows current mode name
+          if ((text === '快速' || text === '思考' || text === 'Pro') && text.length < 10) {
+            // Check if it's near the input area
+            const rect = btn.getBoundingClientRect();
+            if (rect.bottom > window.innerHeight * 0.5) {
+              modeBtn = btn;
+              break;
+            }
+          }
         }
+        if (modeBtn) break;
+        await new Promise(r => setTimeout(r, 200));
       }
+
+      if (!modeBtn) return { success: false, error: 'Mode selector not found' };
+      modeBtn.click();
+
+      // Wait for menu and click target mode
+      await new Promise(r => setTimeout(r, 300));
+
+      let targetItem = null;
+      const menuStart = Date.now();
+      while (Date.now() - menuStart < 5000) {
+        const items = document.querySelectorAll('[role="menuitem"], button');
+        for (const item of items) {
+          const text = (item.innerText || '').trim();
+          if (text.includes(targetMode) && text.length < 30 && item.offsetParent !== null) {
+            targetItem = item;
+            break;
+          }
+        }
+        if (targetItem) break;
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      if (!targetItem) return { success: false, error: 'Target mode not found in menu' };
+      targetItem.click();
+
+      return { success: true };
     })()
   `);
 
-  await page.wait(1);
-
-  // Click target mode
-  const modeScript = `
-    (() => {
-      const items = document.querySelectorAll('[role="menuitem"], button');
-      for (const item of items) {
-        const text = (item.innerText || '').trim();
-        if (text.includes('${targetMode}') && text.length < 30) {
-          item.click();
-          return;
-        }
-      }
-    })()
-  `;
-
-  await page.evaluate(modeScript);
-  await page.wait(1);
+  return result?.success === true;
 }
 
 async function confirmResearchStart(page: any, maxWaitSec: number): Promise<boolean> {
-  const maxMs = maxWaitSec * 1000;
-  const startTime = Date.now();
+  const result = await page.evaluate(`
+    (async () => {
+      const timeout = ${maxWaitSec * 1000};
+      const startTime = Date.now();
 
-  while (Date.now() - startTime < maxMs) {
-    await page.wait(1);
-
-    const clicked = await page.evaluate(`
-      (() => {
+      while (Date.now() - startTime < timeout) {
         const btns = document.querySelectorAll('button');
         for (const btn of btns) {
           const text = btn.innerText?.trim();
@@ -107,26 +162,34 @@ async function confirmResearchStart(page: any, maxWaitSec: number): Promise<bool
           if (text === 'Start research' || aria === 'Start research' ||
               text === '开始研究' || text === '开始') {
             btn.click();
-            return true;
+            return { success: true };
           }
         }
-        return false;
-      })()
-    `);
+        await new Promise(r => setTimeout(r, 500));
+      }
 
-    if (clicked) {
-      return true;
-    }
-  }
+      return { success: false };
+    })()
+  `);
 
-  return false;
+  return result?.success === true;
 }
 
 async function sendPrompt(page: any, prompt: string): Promise<boolean> {
-  return page.evaluate(`
+  const result = await page.evaluate(`
     (async () => {
-      const editor = document.querySelector('rich-textarea div.ql-editor');
-      if (!editor) return false;
+      const timeout = 5000;
+      const startTime = Date.now();
+
+      // Find editor with retry
+      let editor = null;
+      while (Date.now() - startTime < timeout) {
+        editor = document.querySelector('rich-textarea div.ql-editor');
+        if (editor) break;
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      if (!editor) return { success: false, error: 'Editor not found' };
 
       editor.focus();
       await new Promise(r => setTimeout(r, 200));
@@ -143,21 +206,23 @@ async function sendPrompt(page: any, prompt: string): Promise<boolean> {
       document.execCommand('insertText', false, ${JSON.stringify(prompt)});
       await new Promise(r => setTimeout(r, 600));
 
-      // Click send
+      // Find and click send button
       const buttons = document.querySelectorAll('button');
       for (const btn of buttons) {
         const label = btn.getAttribute('aria-label');
         if (label === '发送' && !btn.disabled) {
           btn.click();
-          return true;
+          return { success: true };
         }
       }
 
       // Fallback: Enter
       editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      return true;
+      return { success: true };
     })()
-  `) as Promise<boolean>;
+  `);
+
+  return result?.success === true;
 }
 
 async function waitForResponse(page: any, timeoutMs: number, isDeepResearch: boolean): Promise<string> {
@@ -167,13 +232,13 @@ async function waitForResponse(page: any, timeoutMs: number, isDeepResearch: boo
   const requiredStable = isDeepResearch ? 5 : 3;
 
   while (Date.now() - startTime < timeoutMs) {
-    await page.wait(2);
-
     const result = await page.evaluate(`
       (() => {
+        // Check if still generating
         const stopBtn = document.querySelector('button[aria-label="停止生成"]');
         const isGenerating = !!stopBtn;
 
+        // Get response from chat window
         const chatWindow = document.querySelector('chat-window');
         if (!chatWindow) return { text: '', generating: isGenerating };
 
@@ -188,6 +253,8 @@ async function waitForResponse(page: any, timeoutMs: number, isDeepResearch: boo
           .replace(/\\nGemini 是一款[\\s\\S]*$/, '')
           .replace(/\\n快速[\\s\\S]*$/, '')
           .replace(/\\n升级到[\\s\\S]*$/, '')
+          .replace(/\\n来源\\n[\\s\\S]*$/, '')
+          .replace(/\\n文件\\n[\\s\\S]*$/, '')
           .trim();
 
         return { text: response, generating: isGenerating };
@@ -208,6 +275,9 @@ async function waitForResponse(page: any, timeoutMs: number, isDeepResearch: boo
         stableCount = 0;
       }
     }
+
+    // Use inline wait instead of page.wait
+    await new Promise(r => setTimeout(r, 2000));
   }
 
   return lastText || 'Timeout: No response received.';
@@ -258,11 +328,31 @@ cli({
 
     // Navigate to Gemini
     await page.goto(GEMINI_URL);
-    await page.wait(4);
+
+    // Wait for page load by checking for editor
+    const pageLoaded = await page.evaluate(`
+      (async () => {
+        const timeout = 10000;
+        const startTime = Date.now();
+        while (Date.now() - startTime < timeout) {
+          const editor = document.querySelector('rich-textarea div.ql-editor');
+          if (editor) return true;
+          await new Promise(r => setTimeout(r, 200));
+        }
+        return false;
+      })()
+    `);
+
+    if (!pageLoaded) {
+      return [{ text: 'Error: Page failed to load' }];
+    }
 
     // Enable Deep Research first (if requested)
     if (useDeepResearch) {
-      await enableDeepResearch(page);
+      const drEnabled = await enableDeepResearch(page);
+      if (!drEnabled) {
+        return [{ text: 'Error: Failed to enable Deep Research' }];
+      }
     }
 
     // Select response mode
@@ -278,14 +368,11 @@ cli({
 
     // Deep Research: wait for and click confirmation
     if (useDeepResearch) {
-      await page.wait(5);
       const confirmed = await confirmResearchStart(page, 60);
       if (!confirmed) {
         return [{ text: 'Error: Failed to find Start research button within 60s' }];
       }
     }
-
-    await page.wait(3);
 
     // Wait for response
     const response = await waitForResponse(page, timeoutMs, useDeepResearch);
