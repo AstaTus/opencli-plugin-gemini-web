@@ -514,12 +514,6 @@ cli({
       type: 'boolean',
       default: false,
       help: 'Enable Deep Research mode (can combine with --mode)'
-    },
-    {
-      name: 'timeout',
-      type: 'int',
-      default: 300,
-      help: 'Max seconds to wait (default: 300, deep-research: 600)'
     }
   ],
   columns: ['text'],
@@ -530,9 +524,7 @@ cli({
     const prompt = kwargs.prompt as string;
     const mode = (kwargs.mode as string) || 'quick';
     const useDeepResearch = kwargs['deep-research'] as boolean;
-    const defaultTimeout = useDeepResearch ? 600 : 300;
-    const timeoutSec = (kwargs.timeout as number) || defaultTimeout;
-    const timeoutMs = timeoutSec * 1000;
+    const timeoutMs = (useDeepResearch ? 600 : 300) * 1000;
 
     // Navigate to Gemini
     await page.goto(GEMINI_URL);

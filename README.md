@@ -25,67 +25,43 @@ git clone https://github.com/AstaTus/opencli-plugin-gemini-web \
 
 ## Usage
 
-### Check Status
-
 ```bash
-opencli gemini-web status
-```
-
-### Start a New Conversation
-
-```bash
-opencli gemini-web new
-```
-
-### Ask Gemini a Question
-
-```bash
-# Simple question (waits up to 180s for response)
+# Quick mode (default)
 opencli gemini-web ask "What is the capital of France?"
 
-# Complex question with longer timeout
-opencli gemini-web ask "分析量子计算的原理和应用" --timeout 300
+# Thinking mode for complex problems
+opencli gemini-web ask "Explain quantum computing in detail" --mode think
+
+# Pro mode for advanced tasks
+opencli gemini-web ask "Write a complex algorithm" --mode pro
+
+# Deep Research (default 600s timeout)
+opencli gemini-web ask "Compare Python vs JavaScript ecosystems" --deep-research
+
+# Combine Deep Research with a specific mode
+opencli gemini-web ask "Analyze market trends" --deep-research --mode pro
 ```
 
-### List Conversation History
+## Parameters
 
-```bash
-opencli gemini-web history --limit 10
-```
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `prompt` | (required) | The question to ask Gemini |
+| `--mode` | `quick` | Response mode: `quick`, `think`, `pro` |
+| `--deep-research` | `false` | Enable Deep Research (can combine with `--mode`) |
 
-## Commands
+## Modes
 
-| Command | Description |
-|---------|-------------|
-| `status` | Check Gemini login status |
-| `new` | Start a new conversation |
-| `ask` | Send a message and wait for response |
-| `history` | List recent conversations |
+- `quick` (default) — Fast response
+- `think` — Deep thinking for complex problems
+- `pro` — Advanced capabilities
 
-## Output Formats
+## Deep Research
 
-All commands support multiple output formats:
-
-```bash
-opencli gemini-web history -f json    # JSON output
-opencli gemini-web history -f yaml    # YAML output
-opencli gemini-web history -f table   # Table output (default)
-```
-
-## Development
-
-### Project Structure
-
-```
-opencli-plugin-gemini-web/
-├── ask.ts            # Main ask command (TypeScript)
-├── new.yaml          # New conversation
-├── history.yaml      # List conversations
-├── status.yaml       # Status check
-├── package.json
-├── AGENT.md
-└── README.md
-```
+When using `--deep-research`, the plugin handles the full research flow:
+1. Sends your prompt and waits for Gemini to generate a research plan
+2. Automatically clicks "Start research" to begin
+3. Waits for the research to complete and returns the full report
 
 ## Configuration
 
@@ -99,69 +75,6 @@ Then reload:
 ```bash
 source ~/.zshrc
 ```
-
-## Usage
-
-### Check Status
-
-```bash
-opencli gemini-web status
-```
-
-### Start a New Conversation
-
-```bash
-opencli gemini-web new
-```
-
-### Ask Gemini a Question
-
-```bash
-# Simple question (default 300s timeout)
-opencli gemini-web ask "What is the capital of France?"
-
-# Use thinking mode for complex questions
-opencli gemini-web ask "分析量子计算的原理" --mode think
-
-# Use Pro mode for advanced tasks
-opencli gemini-web ask "Write a complex algorithm" --mode pro
-
-# Deep Research (default 600s timeout)
-opencli gemini-web ask "Compare Python vs JavaScript ecosystems" --deep-research
-
-# Deep Research + Pro mode combined
-opencli gemini-web ask "Analyze market trends" --deep-research --mode pro
-
-# Custom timeout
-opencli gemini-web ask "复杂问题" --timeout 600
-```
-
-**Parameters:**
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--mode` | `quick` | Response mode: quick, think, pro |
-| `--deep-research` | `false` | Enable Deep Research (can combine with --mode) |
-| `--timeout` | 300/600 | Max seconds (600 for deep-research) |
-
-**Modes:**
-- `quick` (default): Fast response
-- `think`: Deep thinking for complex problems
-- `pro`: Advanced capabilities
-
-### List Conversation History
-
-```bash
-opencli gemini-web history --limit 10
-```
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `status` | Check Gemini login status |
-| `new` | Start a new conversation |
-| `ask` | Send a message and wait for response |
-| `history` | List recent conversations |
 
 ## Troubleshooting
 
@@ -179,17 +92,21 @@ Make sure you are logged into Gemini in Chrome:
 2. Log in with your Google account
 3. Retry the command
 
-### Empty responses
-
-- Ensure the page has fully loaded before running commands
-- Try increasing the wait time: `opencli gemini-web ask "..." --wait 30`
-
 ### Extension not connected
 
 Make sure the OpenCLI Browser Bridge extension is installed and enabled in Chrome:
 1. Download `opencli-extension.zip` from [OpenCLI Releases](https://github.com/jackwener/opencli/releases)
 2. Unzip and load in `chrome://extensions/` → "Load unpacked"
 3. Run `opencli doctor` to verify connection
+
+## Project Structure
+
+```
+opencli-plugin-gemini-web/
+├── ask.ts            # Main ask command (TypeScript)
+├── package.json
+└── README.md
+```
 
 ## License
 
@@ -198,8 +115,3 @@ MIT
 ## Related
 
 - [OpenCLI](https://github.com/jackwener/opencli) - The main OpenCLI project
-- [OpenCLI Plugins Guide](https://github.com/jackwener/opencli/blob/main/docs/guide/plugins.md)
-
-## Disclaimer
-
-All files in this repository are generated by Claude using the GLM-5 model.

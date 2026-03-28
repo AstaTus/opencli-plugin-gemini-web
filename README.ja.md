@@ -2,6 +2,8 @@
 
 [Google Gemini](https://gemini.google.com/app) ウェブインターフェースと対話するための OpenCLI プラグイン。
 
+[English](./README.md) | [中文](./README.zh-CN.md) | 日本語
+
 ## 前提条件
 
 - [OpenCLI](https://github.com/jackwener/opencli) がインストールされている（`npm install -g @jackwener/opencli`）
@@ -23,83 +25,64 @@ git clone https://github.com/AstaTus/opencli-plugin-gemini-web \
 
 ## 使い方
 
-### ステータス確認
-
 ```bash
-opencli gemini-web status
-```
-
-### 新しい会話を開始
-
-```bash
-opencli gemini-web new
-```
-
-### Gemini に質問する
-
-```bash
-# 簡単な質問（デフォルト 180 秒待機）
+# クイックモード（デフォルト）
 opencli gemini-web ask "フランスの首都はどこですか？"
 
-# 複雑な質問、タイムアウト延長
-opencli gemini-web ask "量子コンピューティングについて詳しく説明して" --timeout 300
+# 思考モード（複雑な問題向け）
+opencli gemini-web ask "量子コンピューティングについて詳しく説明して" --mode think
+
+# Pro モード（高度な機能）
+opencli gemini-web ask "複雑なアルゴリズムを書いて" --mode pro
+
+# Deep Research（デフォルト 600 秒タイムアウト）
+opencli gemini-web ask "Python と JavaScript の比較" --deep-research
+
+# 組み合わせ：Deep Research + モード指定
+opencli gemini-web ask "AI 業界のトレンド分析" --deep-research --mode pro
 ```
 
-### 会話履歴を表示
+## パラメータ
 
-```bash
-opencli gemini-web history --limit 10
-```
+| パラメータ | デフォルト | 説明 |
+|------------|-----------|------|
+| `prompt` | （必須） | Gemini に送信する質問 |
+| `--mode` | `quick` | レスポンスモード：`quick`、`think`、`pro` |
+| `--deep-research` | `false` | Deep Research を有効化（`--mode` と組み合わせ可能） |
 
-## コマンド一覧
+## モード
 
-| コマンド | 説明 |
-|----------|------|
-| `status` | Gemini のログイン状態を確認 |
-| `new` | 新しい会話を開始 |
-| `ask` | メッセージを送信して回答を待機 |
-| `history` | 最近の会話を一覧表示 |
+- `quick`（デフォルト）— 高速レスポンス
+- `think` — 深い思考による複雑な問題の解析
+- `pro` — 高度な機能
 
-## 出力形式
+## Deep Research
 
-すべてのコマンドは複数の出力形式をサポート：
-
-```bash
-opencli gemini-web history -f json    # JSON 形式
-opencli gemini-web history -f yaml    # YAML 形式
-opencli gemini-web history -f table   # テーブル形式（デフォルト）
-```
-
-## プロジェクト構成
-
-```
-opencli-plugin-gemini-web/
-├── ask.yaml          # メッセージ送信と回答待機
-├── new.yaml          # 新規会話
-├── history.yaml      # 履歴一覧
-├── status.yaml       # ステータス確認
-├── package.json
-├── AGENT.md
-└── README.md
-```
+`--deep-research` 使用時、プラグインは自動的に研究フロー全体を処理します：
+1. プロンプトを送信し、Gemini が研究計画を生成するのを待機
+2. 「研究を開始」を自動クリック
+3. 研究の完了を待機し、完全なレポートを返却
 
 ## 設定
 
-長時間の応答の場合、タイムアウトを増やします：
+**重要**：タイムアウトエラーを防ぐため、`~/.zshrc` または `~/.bashrc` に以下を追加：
 
 ```bash
-# デフォルトは 180 秒、複雑な質問は増やす
-opencli gemini-web ask "複雑な質問..." --timeout 300
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=350
+```
+
+再読み込み：
+```bash
+source ~/.zshrc
 ```
 
 ## トラブルシューティング
 
 ### タイムアウトエラー
 
-応答に時間がかかる場合：
+`timed out after 60s` が表示される場合、環境変数を設定：
 ```bash
-# タイムアウトを増やす（秒）
-opencli gemini-web ask "複雑な質問..." --timeout 300
+export OPENCLI_BROWSER_COMMAND_TIMEOUT=350
 ```
 
 ### 「ログインしていません」エラー
@@ -109,17 +92,21 @@ Chrome で Gemini にログインしていることを確認：
 2. Google アカウントでログイン
 3. コマンドを再実行
 
-### 空のレスポンス
-
-- ページが完全に読み込まれていることを確認
-- 待機時間を増やす：`opencli gemini-web ask "..." --wait 30`
-
 ### 拡張機能が接続されていない
 
 OpenCLI Browser Bridge 拡張機能がインストールされ有効になっていることを確認：
 1. [OpenCLI Releases](https://github.com/jackwener/opencli/releases) から `opencli-extension.zip` をダウンロード
 2. 解凍後、`chrome://extensions/` で「パッケージ化されていない拡張機能を読み込む」をクリック
 3. `opencli doctor` を実行して接続を確認
+
+## プロジェクト構成
+
+```
+opencli-plugin-gemini-web/
+├── ask.ts            # メインコマンド（TypeScript）
+├── package.json
+└── README.md
+```
 
 ## ライセンス
 
@@ -128,8 +115,3 @@ MIT
 ## 関連リンク
 
 - [OpenCLI](https://github.com/jackwener/opencli) - OpenCLI メインプロジェクト
-- [OpenCLI プラグインガイド](https://github.com/jackwener/opencli/blob/main/docs/guide/plugins.md)
-
-## 免責事項
-
-このリポジトリのすべてのファイルは、Claude が GLM-5 モデルを使用して生成したものです。
