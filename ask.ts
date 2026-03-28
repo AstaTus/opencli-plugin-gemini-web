@@ -119,7 +119,7 @@ async function getUIState(page: any): Promise<UIState> {
   const result = await page.evaluate(`
     (() => {
       // Find mode button - it shows the current mode name
-      let currentMode: string | null = null;
+      let currentMode = null;
       const buttons = document.querySelectorAll('button');
 
       for (const btn of buttons) {
@@ -262,8 +262,6 @@ async function confirmResearchStart(page: any, maxWaitSec: number): Promise<bool
 // ============================================================================
 
 async function selectMode(page: any, mode: string): Promise<boolean> {
-  if (mode === 'quick') return true;
-
   const targetMode = MODE_LABELS[mode];
   if (!targetMode) return false;
 
@@ -354,19 +352,29 @@ async function sendPrompt(page: any, prompt: string): Promise<boolean> {
       document.execCommand('insertText', false, ${JSON.stringify(prompt)});
       await new Promise(r => setTimeout(r, ${SEND_CONFIRM_DELAY_MS}));
 
+      // Verify text was inserted
+      const editorText = editor.innerText || '';
+      if (!editorText.includes(${JSON.stringify(prompt.substring(0, 20))})) {
+        return { success: false, error: 'Text not inserted' };
+      }
+
       // Find and click send button
       const buttons = document.querySelectorAll('button');
+      let sendBtnFound = false;
       for (const btn of buttons) {
         const label = btn.getAttribute('aria-label');
-        if (label === '发送' && !btn.disabled) {
-          btn.click();
-          return { success: true };
+        if (label === '发送') {
+          sendBtnFound = true;
+          if (!btn.disabled) {
+            btn.click();
+            return { success: true, method: 'click' };
+          }
         }
       }
 
       // Fallback: press Enter
       editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      return { success: true };
+      return { success: true, method: 'enter', sendBtnFound };
     })()
   `);
 
@@ -389,28 +397,57 @@ async function waitForResponse(
   while (Date.now() - startTime < timeoutMs) {
     const result = await page.evaluate(`
       (() => {
-        // Check if still generating
+        const deepResearch = ${isDeepResearch};
         const stopBtn = document.querySelector('button[aria-label="停止生成"]');
         const isGenerating = !!stopBtn;
 
-        // Get response from chat window
         const chatWindow = document.querySelector('chat-window');
         if (!chatWindow) return { text: '', generating: isGenerating };
 
         const fullText = chatWindow.innerText || '';
-        const idx = fullText.indexOf('Gemini 说');
+        if (!fullText) return { text: '', generating: isGenerating };
 
-        if (idx < 0) return { text: '', generating: isGenerating };
+        // Detect quota/rate-limit messages — no response will be generated
+        if (/你已达到.*用量限额/.test(fullText) || /Too many requests/.test(fullText)) {
+          return { text: '', generating: false, quotaExceeded: true };
+        }
 
-        let response = fullText.substring(idx + 8);
+        // Find the LAST "Gemini 说" marker (lastIndexOf for multi-turn conversations)
+        let responseStart = -1;
+        const idx = fullText.lastIndexOf('Gemini 说');
+        if (idx >= 0) {
+          responseStart = idx + 'Gemini 说'.length;
+        } else {
+          // Fallback: handle versioned names like "Gemini 2.5 说"
+          const matches = [...fullText.matchAll(/Gemini[^\\n]{0,30}?说/g)];
+          if (matches.length > 0) {
+            const last = matches[matches.length - 1];
+            responseStart = last.index + last[0].length;
+          }
+        }
+
+        if (responseStart < 0) return { text: '', generating: isGenerating };
+
+        let response = fullText.substring(responseStart);
+        // Common footer cleanup (applies to both modes)
         response = response
-          .replace(/\\n工具[\\s\\S]*$/, '')
-          .replace(/\\nGemini 是一款[\\s\\S]*$/, '')
-          .replace(/\\n快速[\\s\\S]*$/, '')
-          .replace(/\\n升级到[\\s\\S]*$/, '')
-          .replace(/\\n来源\\n[\\s\\S]*$/, '')
-          .replace(/\\n文件\\n[\\s\\S]*$/, '')
+          .replace(/\\nGemini 是一款.*/, '')
+          .replace(/\\n升级.*/, '')
+          .replace(/\\n你已达到.*/, '')
+          .replace(/\\n用量限额.*/, '')
+          .replace(/\\n在此之前.*/, '')
           .trim();
+
+        // Additional cleanup for normal mode only
+        // Deep research reports include 来源/文件 as part of the content
+        if (!deepResearch) {
+          response = response
+            .replace(/\\n来源\\n[\\s\\S]*$/, '')
+            .replace(/\\n文件\\n[\\s\\S]*$/, '')
+            .replace(/\\n工具\\n[\\s\\S]*$/, '')
+            .replace(/\\n快速\\n[\\s\\S]*$/, '')
+            .trim();
+        }
 
         return { text: response, generating: isGenerating };
       })()
@@ -419,22 +456,25 @@ async function waitForResponse(
     const text = (result?.text || '').trim();
     const isGenerating = result?.generating || false;
 
+    // Quota exceeded — return immediately instead of waiting for timeout
+    if (result?.quotaExceeded) {
+      return 'Error: Gemini 用量限额已耗尽，请稍后再试。';
+    }
+
     if (text && text.length > 5) {
-      if (!isGenerating) {
-        // Not generating - confirm content is stable
-        if (text === lastText) {
-          stableCount++;
-          if (stableCount >= RESPONSE_STABLE_COUNT) {
-            return text;
-          }
-        } else {
-          lastText = text;
-          stableCount = 1;
+      if (text === lastText) {
+        stableCount++;
+        // Only return when content is stable AND generation is complete
+        if (!isGenerating && stableCount >= RESPONSE_STABLE_COUNT) {
+          return text;
+        }
+        // Safety: if text stable for 5s but stop button lingers, return anyway
+        if (isGenerating && stableCount >= 10) {
+          return text;
         }
       } else {
-        // Still generating, update lastText
         lastText = text;
-        stableCount = 0;
+        stableCount = 1;
       }
     }
 
@@ -503,6 +543,23 @@ cli({
       return [{ text: 'Error: Page failed to load' }];
     }
 
+    // Start a new chat to ensure clean state
+    const newChatBtn = await page.evaluate(`
+      (() => {
+        const buttons = document.querySelectorAll('button');
+        for (const btn of buttons) {
+          if (btn.innerText?.trim() === '新对话') {
+            btn.click();
+            return true;
+          }
+        }
+        return false;
+      })()
+    `);
+    if (newChatBtn) {
+      await new Promise(r => setTimeout(r, 2500));
+    }
+
     // Get current UI state
     const uiState = await getUIState(page);
 
@@ -544,6 +601,16 @@ cli({
       const confirmed = await confirmResearchStart(page, DEEP_RESEARCH_CONFIRM_TIMEOUT_SEC);
       if (!confirmed) {
         return [{ text: 'Error: Failed to find Start research button within 60s' }];
+      }
+
+      // Wait for research to actually start (stop button appears)
+      const researchStart = Date.now();
+      while (Date.now() - researchStart < 30000) {
+        const hasStopBtn = await page.evaluate(`
+          (() => !!document.querySelector('button[aria-label="停止生成"]'))()
+        `);
+        if (hasStopBtn) break;
+        await new Promise(r => setTimeout(r, 500));
       }
     }
 
