@@ -7,6 +7,7 @@
 ## 前提条件
 
 - [OpenCLI](https://github.com/jackwener/opencli) がインストールされている（`npm install -g @jackwener/opencli`）
+- [esbuild](https://esbuild.github.io/) がインストールされている（`npm i -g esbuild`）— TypeScript プラグインのコンパイルに必要
 - Chrome ブラウザに **OpenCLI Browser Bridge** 拡張機能がインストールされている
   - [OpenCLI Releases](https://github.com/jackwener/opencli/releases) からダウンロード
   - `chrome://extensions/` で展開して読み込む

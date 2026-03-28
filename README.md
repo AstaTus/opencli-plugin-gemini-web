@@ -7,6 +7,7 @@ OpenCLI plugin for interacting with [Google Gemini](https://gemini.google.com/ap
 ## Prerequisites
 
 - [OpenCLI](https://github.com/jackwener/opencli) installed (`npm install -g @jackwener/opencli`)
+- [esbuild](https://esbuild.github.io/) installed (`npm i -g esbuild`) — required for TypeScript plugin compilation
 - Chrome browser with **OpenCLI Browser Bridge** extension installed
   - Download from [OpenCLI Releases](https://github.com/jackwener/opencli/releases)
   - Load unpacked in `chrome://extensions/`

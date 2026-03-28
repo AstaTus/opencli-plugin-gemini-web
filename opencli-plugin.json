@@ -1,0 +1,6 @@
+{
+  "name": "gemini-web",
+  "version": "1.0.0",
+  "opencli": ">=1.3.0",
+  "description": "OpenCLI plugin for Google Gemini web interface — ask questions via browser automation"
+}

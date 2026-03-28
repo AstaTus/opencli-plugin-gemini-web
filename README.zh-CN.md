@@ -7,6 +7,7 @@
 ## 前置条件
 
 - 已安装 [OpenCLI](https://github.com/jackwener/opencli)（`npm install -g @jackwener/opencli`）
+- 已安装 [esbuild](https://esbuild.github.io/)（`npm i -g esbuild`）— TypeScript 插件编译所需
 - Chrome 浏览器已安装 **OpenCLI Browser Bridge** 扩展
   - 从 [OpenCLI Releases](https://github.com/jackwener/opencli/releases) 下载
   - 在 `chrome://extensions/` 中加载已解压的扩展
